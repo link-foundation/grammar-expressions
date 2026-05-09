@@ -1,4 +1,6 @@
-use grammar_expressions::{find_first, is_match, replace_all};
+#![allow(clippy::literal_string_with_formatting_args)]
+
+use grammar_expressions::{find_first, is_match, replace_all, rewrite, RewriteRule};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert!(is_match("{word:[A-Za-z]+}", "grammar")?);
@@ -13,6 +15,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "width: 42 height: 7",
     )?;
     println!("{rewritten}");
+
+    let result = rewrite(
+        &[
+            RewriteRule::new("{left:a}{right:b}", "$right$left"),
+            RewriteRule::terminal("ba", "done"),
+        ],
+        "ab",
+        10,
+    )?;
+    println!("{}", result.output);
 
     Ok(())
 }

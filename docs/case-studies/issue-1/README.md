@@ -3,7 +3,7 @@
 **Issue:** [#1](https://github.com/link-foundation/grammar-expressions/issues/1)
 **Pull request:** [#2](https://github.com/link-foundation/grammar-expressions/pull/2)
 **Date:** 2026-05-09
-**Status:** Initial executable slice implemented
+**Status:** Runtime split, CI split, and executable engine features implemented
 
 ## Executive Summary
 
@@ -13,8 +13,9 @@ CLI tooling, a microservice, a GitHub Pages web app, links-notation compatibilit
 parity, and grammar inference from examples.
 
 The repository started with only `README.md`, `LICENSE`, `.gitignore`, and a placeholder
-`.gitkeep`. This PR establishes the first working implementation rather than attempting to hide the
-remaining research and product scope behind empty scaffolding.
+`.gitkeep`. This PR establishes working Rust and JavaScript packages, keeps the broad roadmap
+visible, and implements bounded rewrite semantics so substitution rules can execute as ordered
+transforms instead of only single-pass replacements.
 
 The implemented slice includes:
 
@@ -22,10 +23,12 @@ The implemented slice includes:
 - JavaScript package, CLI, and JSON HTTP microservice.
 - Shared behavior for literals, grouping, ordered choice, wildcard, character classes, repetition,
   named captures, search, full-match, and capture-aware replacement.
+- Bounded ordered rewrite rules with terminal rules and step-limit reporting for Markov-style
+  substitution systems.
 - Rust and JavaScript tests for matching, replacement, Unicode-boundary behavior, and zero-width
-  scanning.
-- Examples for both languages.
-- A CI workflow that checks both engines.
+  scanning, plus rewrite-rule parity tests.
+- Runtime-specific `rust/src` and `js/src` package layouts with examples for both languages.
+- Separate Rust and JavaScript workflows with template-derived timeouts and file-size checks.
 - Captured issue, PR, and template data under this case-study directory.
 
 ## Data Captured
@@ -35,8 +38,12 @@ The implemented slice includes:
 | `data/issue-1.json` | Full issue metadata captured with GitHub CLI. |
 | `data/pr-2.json` | Pull request metadata before implementation. |
 | `data/pr-2-review-comments.json` | Inline review comments for PR #2; empty at capture time. |
+| `data/pr-2-conversation-comments.json` | PR conversation comments, including the follow-up requesting split Rust/JS layout and CI. |
+| `data/current-repository-file-tree.txt` | Repository file tree after restructuring. |
 | `data/js-template-file-tree.txt` | Full file tree from `js-ai-driven-development-pipeline-template`. |
 | `data/rust-template-file-tree.txt` | Full file tree from `rust-ai-driven-development-pipeline-template`. |
+| `data/js-template-release.yml` | JavaScript template workflow used for CI/CD comparison. |
+| `data/rust-template-release.yml` | Rust template workflow used for CI/CD comparison. |
 
 ## Requirements and Resolution
 
@@ -45,15 +52,16 @@ The implemented slice includes:
 | PEG/regular-expression-like grammar language | Implemented initial expression parser with ordered choice, grouping, wildcard, classes, captures, and repetition. | Add named grammar rules, lookahead, rule references, packrat memoization, and richer diagnostics. |
 | Parsers for programming and natural languages | Not claimable in the first slice. | Evolve toward a real grammar definition format with rule graphs, left-recursion policy, AST construction, and conformance suites. |
 | General substitution patterns | Implemented `replace_all` with `$name`, `${name}`, `$0`, and `$$`. | Add ordered rule sets, terminal rules, fixed-point execution, and explicit loop limits for Markov-style systems. |
-| Turing-complete substitutions | Documented as future work because it requires rule-set semantics and termination controls. | Model prioritized rewrite systems, then expose bounded execution and trace output. |
-| Rust library and CLI | Implemented in `src/lib.rs` and `src/main.rs`. | Add crates.io publication workflow once API stabilizes. |
-| JavaScript library and CLI | Implemented in `src/index.js`, `src/index.d.ts`, and `bin/grammar-expressions.js`. | Add npm publication workflow once package metadata is finalized. |
-| Microservice | Implemented initial JavaScript HTTP service with `/health`, `/match`, `/find`, and `/replace`. | Add Rust service parity and richer error/status mapping after result schemas stabilize. |
+| Turing-complete substitutions | Implemented bounded ordered rewrite rules with terminal rules and max-step reporting. | Add execution traces, rule labels, and persisted rule-set formats. |
+| Rust library and CLI | Implemented in `rust/src/lib.rs` and `rust/src/main.rs`. | Add crates.io publication workflow once API stabilizes. |
+| JavaScript library and CLI | Implemented in `js/src/index.js`, `js/src/index.d.ts`, and `js/bin/grammar-expressions.js`. | Add npm publication workflow once package metadata is finalized. |
+| Microservice | Implemented JavaScript HTTP service with `/health`, `/match`, `/find`, `/replace`, and `/rewrite`. | Add Rust service parity and richer error/status mapping after result schemas stabilize. |
 | GitHub Pages web app | Not included in this first PR. | Add a playground that can run JS and Rust/WASM engines side by side in web workers. |
 | Rust + WebAssembly parity | Core Rust API is dependency-free and suitable for future WASM bindings. | Add `wasm-bindgen` package and parity tests against the JS engine. |
 | links-notation compatibility | Not implemented yet. | Define an AST serialization that can round-trip through links-notation tokens and link-cli substitutions. |
 | Grammar inference by examples | Researched and planned below. | Start with regular-language inference for small alphabets and PBE-style synthesis for substitutions. |
-| CI/CD best practices from templates | Compared template file trees and added a compact CI workflow with timeouts, Rust checks, JS tests, and concurrency. | Add release automation after package naming, registry targets, and version policy are decided. |
+| Runtime package layout | Implemented explicit `rust/` and `js/` package roots with `rust/src` and `js/src`. | Keep generated WASM and web assets isolated under their own package folders. |
+| CI/CD best practices from templates | Compared template file trees and added separate Rust and JavaScript workflows with timeouts, concurrency, matrix tests, build checks, and file-size scripts. | Add release automation after package naming, registry targets, and version policy are decided. |
 
 ## Research Notes
 
@@ -85,11 +93,14 @@ changelog fragments, pre-commit hooks, examples, experiments, and case studies.
 
 This repository now adopts the low-risk subset that is useful immediately:
 
-- `Cargo.toml` with library and binary targets.
-- `package.json` with package exports, TypeScript declarations, binary mapping, and Node tests.
+- Root `Cargo.toml` workspace with the Rust package in `rust/`.
+- `rust/Cargo.toml` with library and binary targets.
+- `js/package.json` with package exports, TypeScript declarations, binary mapping, and Node tests.
 - JavaScript HTTP service as the first microservice implementation.
-- `.github/workflows/ci.yml` with explicit 10-minute job timeouts.
-- `examples/` for both Rust and JavaScript.
+- `.github/workflows/rust.yml` and `.github/workflows/js.yml` with explicit job timeouts.
+- `rust/scripts/check-file-size.sh` and `js/scripts/check-file-line-limits.sh`, adapted from the
+  template file-size guardrails.
+- `rust/examples/` and `js/examples/`.
 - `docs/case-studies/issue-1/` with captured data.
 
 Release automation is deliberately deferred. The package API and publication targets need review
@@ -110,8 +121,10 @@ before adding crates.io/npm publishing secrets or automated version bumping.
 ## Verification
 
 ```sh
-cargo test
-npm test
+cargo fmt --all -- --check
+cargo clippy -p grammar-expressions --all-targets --all-features
+cargo test -p grammar-expressions --all-features --verbose
+npm --prefix js run check
 ```
 
 ## References

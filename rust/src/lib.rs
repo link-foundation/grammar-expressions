@@ -46,6 +46,41 @@ pub struct MatchResult {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RewriteRule {
+    pub pattern: String,
+    pub replacement: String,
+    pub terminal: bool,
+}
+
+impl RewriteRule {
+    #[must_use]
+    pub fn new(pattern: impl Into<String>, replacement: impl Into<String>) -> Self {
+        Self {
+            pattern: pattern.into(),
+            replacement: replacement.into(),
+            terminal: false,
+        }
+    }
+
+    #[must_use]
+    pub fn terminal(pattern: impl Into<String>, replacement: impl Into<String>) -> Self {
+        Self {
+            pattern: pattern.into(),
+            replacement: replacement.into(),
+            terminal: true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RewriteResult {
+    pub output: String,
+    pub steps: usize,
+    pub terminated: bool,
+    pub max_steps_reached: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GrammarError {
     pub message: String,
     pub position: usize,
@@ -105,6 +140,19 @@ pub fn find_all(pattern: &str, input: &str) -> Result<Vec<MatchResult>, GrammarE
 pub fn replace_all(pattern: &str, replacement: &str, input: &str) -> Result<String, GrammarError> {
     let expression = parse(pattern)?;
     Ok(replace_all_expression(&expression, replacement, input))
+}
+
+pub fn rewrite(
+    rules: &[RewriteRule],
+    input: &str,
+    max_steps: usize,
+) -> Result<RewriteResult, GrammarError> {
+    let compiled = rules
+        .iter()
+        .map(|rule| parse(&rule.pattern).map(|expression| (expression, rule)))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(rewrite_compiled(&compiled, input, max_steps))
 }
 
 #[must_use]
@@ -179,6 +227,62 @@ pub fn replace_all_expression(expression: &Expression, replacement: &str, input:
     }
 
     output.push_str(&input[copied_until..]);
+    output
+}
+
+fn rewrite_compiled(
+    rules: &[(Expression, &RewriteRule)],
+    input: &str,
+    max_steps: usize,
+) -> RewriteResult {
+    let mut output = input.to_string();
+    let mut steps = 0;
+    let mut terminated = false;
+
+    while steps < max_steps {
+        let mut applied = false;
+
+        for (expression, rule) in rules {
+            let Some(found) = find_from(expression, &output, 0) else {
+                continue;
+            };
+
+            let replacement = render_replacement(&rule.replacement, &found);
+            output = replace_match_once(&output, &found, &replacement);
+            steps += 1;
+            applied = true;
+
+            if rule.terminal {
+                terminated = true;
+            }
+            break;
+        }
+
+        if !applied || terminated {
+            break;
+        }
+    }
+
+    let max_steps_reached = !terminated
+        && steps == max_steps
+        && max_steps > 0
+        && rules
+            .iter()
+            .any(|(expression, _)| find_from(expression, &output, 0).is_some());
+
+    RewriteResult {
+        output,
+        steps,
+        terminated,
+        max_steps_reached,
+    }
+}
+
+fn replace_match_once(input: &str, found: &MatchResult, replacement: &str) -> String {
+    let mut output = String::new();
+    output.push_str(&input[..found.start]);
+    output.push_str(replacement);
+    output.push_str(&input[found.end..]);
     output
 }
 

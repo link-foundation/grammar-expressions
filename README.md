@@ -1,9 +1,17 @@
 # grammar-expressions
 
-A small initial implementation of a PEG/regular-expression style grammar expression engine.
+A PEG/regular-expression style grammar expression engine implemented as a Rust package and a
+JavaScript package in one repository.
 
-This repository currently contains matching engines for Rust and JavaScript with the same
-public behavior:
+The repository is split by runtime so each engine can evolve, test, publish, and release through
+runtime-specific tooling:
+
+```text
+rust/   Rust library, CLI, tests, examples, and package checks
+js/     JavaScript library, CLI, HTTP microservice, tests, examples, and package checks
+```
+
+Both engines currently expose the same public behavior:
 
 - literal matching, grouping, ordered choice with `|`
 - wildcard `.`
@@ -11,13 +19,13 @@ public behavior:
 - `*`, `+`, and `?` repetition
 - named captures with `{name:expression}`
 - full matching, searching, and capture-aware replacement
+- bounded ordered rewrite rules for Markov-style substitutions
 - command-line entry points for Rust and JavaScript
-- a small JSON HTTP microservice for JavaScript
+- a JSON HTTP microservice for JavaScript
 
-This is the first executable slice for issue
-[#1](https://github.com/link-foundation/grammar-expressions/issues/1). The broader language,
-grammar inference, links-notation compatibility, WebAssembly, web app, and service roadmap are
-documented in [docs/case-studies/issue-1](docs/case-studies/issue-1/README.md).
+The broader language, grammar inference, links-notation compatibility, WebAssembly, web app, and
+service roadmap from issue [#1](https://github.com/link-foundation/grammar-expressions/issues/1)
+is tracked in [docs/case-studies/issue-1](docs/case-studies/issue-1/README.md).
 
 ## Pattern syntax
 
@@ -54,14 +62,17 @@ assert_eq!(output, "width=42 height=7");
 Run the Rust checks:
 
 ```sh
-cargo test
+cargo fmt --all -- --check
+cargo clippy -p grammar-expressions --all-targets --all-features
+cargo test -p grammar-expressions --all-features
 ```
 
 Run the Rust CLI:
 
 ```sh
-cargo run -- match "{word:[A-Za-z]+}" "grammar"
-cargo run -- replace "{key:[A-Za-z]+}: {value:[0-9]+}" "$key=$value" "width: 42"
+cargo run -p grammar-expressions -- match "{word:[A-Za-z]+}" "grammar"
+cargo run -p grammar-expressions -- replace "{key:[A-Za-z]+}: {value:[0-9]+}" "$key=$value" "width: 42"
+cargo run -p grammar-expressions -- rewrite "{left:a}{right:b}" "$right$left" "ab" 10
 ```
 
 ## JavaScript
@@ -78,20 +89,21 @@ console.log(
 Run the JavaScript checks:
 
 ```sh
-npm test
+npm --prefix js run check
 ```
 
 Run the JavaScript CLI:
 
 ```sh
-node bin/grammar-expressions.js match "{word:[A-Za-z]+}" "grammar"
-node bin/grammar-expressions.js replace "{key:[A-Za-z]+}: {value:[0-9]+}" '$key=$value' "width: 42"
+node js/bin/grammar-expressions.js match "{word:[A-Za-z]+}" "grammar"
+node js/bin/grammar-expressions.js replace "{key:[A-Za-z]+}: {value:[0-9]+}" '$key=$value' "width: 42"
+node js/bin/grammar-expressions.js rewrite "{left:a}{right:b}" '$right$left' "ab" 10
 ```
 
 Run the JavaScript microservice:
 
 ```sh
-node bin/grammar-expressions-server.js 8787
+node js/bin/grammar-expressions-server.js 8787
 curl -sS http://127.0.0.1:8787/replace \
   -H 'content-type: application/json' \
   -d '{"pattern":"{key:[A-Za-z]+}: {value:[0-9]+}","replacement":"$key=$value","input":"width: 42"}'
@@ -103,6 +115,29 @@ Service endpoints:
 - `POST /match` with `{ "pattern": "...", "input": "..." }`
 - `POST /find` with `{ "pattern": "...", "input": "..." }`
 - `POST /replace` with `{ "pattern": "...", "replacement": "...", "input": "..." }`
+- `POST /rewrite` with `{ "rules": [{ "pattern": "...", "replacement": "...", "terminal": false }], "input": "...", "maxSteps": 1000 }`
+
+## Rewrite rules
+
+Rewrite rules are ordered. On each step, the engine finds the first rule whose pattern matches the
+current text, replaces the first match, and restarts from the first rule. A terminal rule stops the
+run after its replacement. `maxSteps` bounds execution so intentionally powerful rewrite systems
+cannot loop forever by accident.
+
+```js
+import { rewrite } from 'grammar-expressions';
+
+const result = rewrite(
+  [
+    { pattern: '{left:a}{right:b}', replacement: '$right$left' },
+    { pattern: 'ba', replacement: 'done', terminal: true },
+  ],
+  'ab',
+  { maxSteps: 10 },
+);
+
+console.log(result.output); // done
+```
 
 ## Design notes
 
@@ -110,6 +145,6 @@ The engine uses ordered choice, so `a|ab` matches `a` first. Repetition is greed
 backtrack inside the current expression. Matching uses UTF-8/Unicode character boundaries in Rust
 and Unicode code point boundaries in JavaScript.
 
-This first version intentionally has no third-party runtime dependencies. Packrat memoization,
+The current core intentionally has no third-party runtime dependencies. Packrat memoization,
 grammar rule definitions, links-notation round-tripping, WebAssembly bindings, and inference from
-examples are planned extensions rather than hidden promises in the current API.
+examples are tracked as explicit next implementation areas in the case study.

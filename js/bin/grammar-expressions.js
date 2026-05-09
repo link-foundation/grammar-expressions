@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { findFirst, isMatch, replaceAll } from '../src/index.js';
+import { findFirst, isMatch, replaceAll, rewrite } from '../src/index.js';
 
-const [, , command, pattern, first, second] = process.argv;
+const [, , command, pattern, first, second, third] = process.argv;
 
 try {
   if (command === 'match') {
@@ -23,8 +23,17 @@ try {
       throw new Error('replace requires PATTERN REPLACEMENT INPUT');
     }
     console.log(replaceAll(pattern, first, second));
+  } else if (command === 'rewrite') {
+    requireArgs(pattern, first, 'rewrite requires PATTERN REPLACEMENT INPUT [MAX_STEPS]');
+    if (second === undefined) {
+      throw new Error('rewrite requires PATTERN REPLACEMENT INPUT [MAX_STEPS]');
+    }
+    const result = rewrite([{ pattern, replacement: first }], second, {
+      maxSteps: parseMaxSteps(third),
+    });
+    console.log(result.output);
   } else {
-    throw new Error('expected command: match, find, or replace');
+    throw new Error('expected command: match, find, replace, or rewrite');
   }
 } catch (error) {
   console.error(`${error.message}\n\n${usage()}`);
@@ -37,11 +46,24 @@ function requireArgs(patternValue, inputValue, message) {
   }
 }
 
+function parseMaxSteps(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const maxSteps = Number(value);
+  if (!Number.isInteger(maxSteps) || maxSteps < 0) {
+    throw new Error('MAX_STEPS must be a non-negative integer');
+  }
+  return maxSteps;
+}
+
 function usage() {
   return [
     'Usage:',
     '  grammar-expressions match PATTERN INPUT',
     '  grammar-expressions find PATTERN INPUT',
     '  grammar-expressions replace PATTERN REPLACEMENT INPUT',
+    '  grammar-expressions rewrite PATTERN REPLACEMENT INPUT [MAX_STEPS]',
   ].join('\n');
 }

@@ -1,6 +1,6 @@
 import http from 'node:http';
 
-import { findFirst, isMatch, replaceAll } from './index.js';
+import { findFirst, isMatch, replaceAll, rewrite } from './index.js';
 
 export function createGrammarExpressionsServer() {
   return http.createServer(async (request, response) => {
@@ -35,6 +35,12 @@ export function createGrammarExpressionsServer() {
             required(body.input, 'input'),
           ),
         });
+      } else if (url.pathname === '/rewrite') {
+        sendJson(response, 200, {
+          result: rewrite(requiredRules(body.rules), required(body.input, 'input'), {
+            maxSteps: optionalMaxSteps(body.maxSteps),
+          }),
+        });
       } else {
         sendJson(response, 404, { error: 'not found' });
       }
@@ -47,6 +53,37 @@ export function createGrammarExpressionsServer() {
 function required(value, name) {
   if (typeof value !== 'string') {
     throw new Error(`${name} must be a string`);
+  }
+  return value;
+}
+
+function requiredRules(value) {
+  if (!Array.isArray(value)) {
+    throw new Error('rules must be an array');
+  }
+
+  return value.map((rule, index) => {
+    if (!rule || typeof rule.pattern !== 'string') {
+      throw new Error(`rules[${index}].pattern must be a string`);
+    }
+    if (typeof rule.replacement !== 'string') {
+      throw new Error(`rules[${index}].replacement must be a string`);
+    }
+
+    return {
+      pattern: rule.pattern,
+      replacement: rule.replacement,
+      terminal: rule.terminal === true,
+    };
+  });
+}
+
+function optionalMaxSteps(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error('maxSteps must be a non-negative integer');
   }
   return value;
 }

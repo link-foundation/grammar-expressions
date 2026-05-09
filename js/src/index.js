@@ -30,6 +30,29 @@ export function replaceAll(pattern, replacement, input) {
   return replaceAllExpression(parse(pattern), replacement, input);
 }
 
+export function rewrite(rules, input, options = {}) {
+  if (!Array.isArray(rules)) {
+    throw new TypeError('rules must be an array');
+  }
+
+  const compiled = rules.map((rule, index) => {
+    if (!rule || typeof rule.pattern !== 'string') {
+      throw new TypeError(`rules[${index}].pattern must be a string`);
+    }
+    if (typeof rule.replacement !== 'string') {
+      throw new TypeError(`rules[${index}].replacement must be a string`);
+    }
+
+    return {
+      expression: parse(rule.pattern),
+      replacement: rule.replacement,
+      terminal: rule.terminal === true,
+    };
+  });
+
+  return rewriteCompiled(compiled, input, normalizeMaxSteps(options.maxSteps));
+}
+
 export function matchFullExpression(expression, input) {
   const states = matchExpression(expression, input, { pos: 0, captures: {} });
   const found = states.find((state) => state.pos === input.length);
@@ -95,6 +118,62 @@ export function replaceAllExpression(expression, replacement, input) {
   }
 
   return output + input.slice(copiedUntil);
+}
+
+function rewriteCompiled(rules, input, maxSteps) {
+  let output = input;
+  let steps = 0;
+  let terminated = false;
+
+  while (steps < maxSteps) {
+    let applied = false;
+
+    for (const rule of rules) {
+      const found = findFrom(rule.expression, output, 0);
+      if (!found) {
+        continue;
+      }
+
+      const replacement = renderReplacement(rule.replacement, found);
+      output = replaceMatchOnce(output, found, replacement);
+      steps += 1;
+      applied = true;
+
+      if (rule.terminal) {
+        terminated = true;
+      }
+      break;
+    }
+
+    if (!applied || terminated) {
+      break;
+    }
+  }
+
+  const maxStepsReached =
+    !terminated &&
+    steps === maxSteps &&
+    maxSteps > 0 &&
+    rules.some((rule) => findFrom(rule.expression, output, 0));
+
+  return {
+    output,
+    steps,
+    terminated,
+    maxStepsReached,
+  };
+}
+
+function replaceMatchOnce(input, found, replacement) {
+  return `${input.slice(0, found.start)}${replacement}${input.slice(found.end)}`;
+}
+
+function normalizeMaxSteps(value) {
+  const maxSteps = value ?? 1000;
+  if (!Number.isInteger(maxSteps) || maxSteps < 0) {
+    throw new TypeError('maxSteps must be a non-negative integer');
+  }
+  return maxSteps;
 }
 
 function findFrom(expression, input, minStart) {
