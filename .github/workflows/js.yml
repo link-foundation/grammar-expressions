@@ -1,0 +1,59 @@
+name: JavaScript
+
+on:
+  push:
+    branches:
+      - main
+      - issue-1-86a20a66ea2c
+    paths:
+      - 'js/**'
+      - '.github/workflows/js.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'js/**'
+      - '.github/workflows/js.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Check JavaScript syntax
+        run: npm --prefix js run check:syntax
+
+      - name: Check JavaScript file sizes
+        run: npm --prefix js run check:file-lines
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    needs: [check]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run tests
+        run: npm test --prefix js

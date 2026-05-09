@@ -1,0 +1,30 @@
+[package]
+name = "grammar-expressions"
+version = "0.1.0"
+edition = "2021"
+description = "A small PEG/regular-expression style grammar expression engine"
+readme = "README.md"
+license = "Unlicense"
+keywords = ["grammar", "peg", "regex", "parser", "substitution"]
+categories = ["parsing", "text-processing"]
+repository = "https://github.com/link-foundation/grammar-expressions"
+rust-version = "1.70"
+
+[lib]
+name = "grammar_expressions"
+path = "src/lib.rs"
+
+[[bin]]
+name = "grammar-expressions"
+path = "src/main.rs"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"

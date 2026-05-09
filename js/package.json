@@ -1,0 +1,43 @@
+{
+  "name": "grammar-expressions",
+  "version": "0.1.0",
+  "description": "A small PEG/regular-expression style grammar expression engine",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "bin": {
+    "grammar-expressions": "bin/grammar-expressions.js",
+    "grammar-expressions-server": "bin/grammar-expressions-server.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./server": {
+      "types": "./src/server.d.ts",
+      "import": "./src/server.js"
+    }
+  },
+  "scripts": {
+    "check:syntax": "node --check src/index.js && node --check src/server.js && node --check bin/grammar-expressions.js && node --check bin/grammar-expressions-server.js",
+    "check:file-lines": "bash scripts/check-file-line-limits.sh",
+    "test": "node --test --test-timeout=30000 tests/index.test.js tests/server.test.js",
+    "check": "npm run check:syntax && npm run check:file-lines && npm test"
+  },
+  "keywords": [
+    "grammar",
+    "peg",
+    "regex",
+    "parser",
+    "substitution"
+  ],
+  "license": "Unlicense",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/link-foundation/grammar-expressions"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
