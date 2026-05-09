@@ -119,6 +119,9 @@ dist
 # Firebase cache directory
 .firebase/
 
+# Rust build output
+target/
+
 # TernJS port file
 .tern-port
 
