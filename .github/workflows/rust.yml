@@ -21,7 +21,8 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+  # Do not interrupt an in-flight crates.io upload or its token revocation.
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
