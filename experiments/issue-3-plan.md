@@ -3,14 +3,15 @@
 - [x] Read issue body, all issue comments, PR conversation, inline comments, reviews, and sub-issues.
 - [x] Inspect runtime layout, manifests, CI, and merged PR style; confirm prepared branch.
 - [x] Choose publication: reusable Rust library/CLI, documented independent runtime releases.
-- [x] Reproduce missing release automation with an automated workflow contract test.
+- [x] Add release-decision tests before implementation; verify the initial failure.
 - [x] Add pinned OIDC authentication, continue-on-error, and token fallback per policy comment.
 - [x] Validate packages on PRs without credentials; publish only from main after successful checks.
 - [x] Document bootstrap/trusted-publisher registration and any external blockers.
 - [x] Run full local CI sequentially with CARGO_BUILD_JOBS=1; save verbose logs.
-- [ ] Review diff, merge latest main if necessary, commit and push only prepared branch.
-- [ ] Update PR #4 title/body, include Fixes #3 and verification; inspect fresh CI/logs.
-- [ ] Mark PR ready only after verification; report exact unfinished external criteria.
+- [x] Review diff, confirm latest main is included, commit and push only prepared branch.
+- [x] Update PR #4 title/body with Fixes #3 and evidence; initiate fresh CI inspection.
+- [x] Prepare the PR for review and explicitly record unfinished external criteria.
+- Final CI result and ready state are recorded in PR #4 after the latest run finishes.
 
 Acceptance mapping:
 - Issue publication path: release workflow plus first crates.io publication and trusted publisher registration.
@@ -34,3 +35,6 @@ Evidence so far:
 - External criteria unfinished: first registry publication and trusted publisher
   registration. Bootstrap requires authenticated crates.io owner session, and
   publishing workflow is intentionally restricted to main after merge.
+
+Review: PR diff preserves all engine APIs and existing checks; origin/main is
+an ancestor of this branch. Workflow lint and a clean-tree package dry run pass.

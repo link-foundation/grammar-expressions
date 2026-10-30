@@ -30,8 +30,9 @@ credentials fail publication with an explicit setup message.
 
 ### First publication and trusted publisher setup
 
-The workflow alone cannot create the initial crate or register its trusted
-publisher. A crates.io owner must complete bootstrap after this PR is merged:
+The workflow does not register a trusted publisher. OIDC requires that
+registration first; the fallback secret may publish the initial crate if valid
+and sufficiently scoped. A crates.io owner must complete bootstrap after merge:
 
 1. Use `package-registry-manager setup --repository . --registry crates-io --execute`
    from the repository checkout, as specified in issue #3. The tool performs the
